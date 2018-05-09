@@ -1,5 +1,5 @@
 # Reference Link
-Docfx makes it easy to link documents together.
+DocFX makes it easy to link documents together.
 
 As we know, markdown provides a [syntax](https://daringfireball.net/projects/markdown/syntax#link) to create hyperlinks.
 For example, the following syntax:
@@ -23,6 +23,7 @@ In DocFX, you can link to a locale resource:
   - Include a [nested toc](table-of-contents.md#link-to-another-toc-file), like `#[child](subfolder/toc.md)` or `#[child](subfolder/)`
   
 Below are the details of each case and all of them use below folder structure example for detail explanation.
+
 ```
 /
 |- subfolder/
@@ -73,6 +74,7 @@ The resolved hyper link is the output path for file2.md, so you can see the sour
 > The referenced files will be automatically built even it's not in the [content scope](config.md)
 
 ### Include a token using relaive path
+
 The [file include](../spec/docfx_flavored_markdown.md#file-inclusion) syntax is using relative path to include a token file.
 
 For example, if `file1.md` includes `subfolder\file2.md`:
@@ -124,8 +126,36 @@ For example, you can write the following links in `subfolder\file2.md` to refere
 [file1](../file1.md)
 ```
 
-Both will resolve to `../file1.html`.
+Both will be resolved to `../file1.html`.
 
 ## Link to a dependency resource
+
+Besides using file path to link to a local resource, DocFX also supports to link a resource stored in [dependenct repository](config.md)
+
+For example you have a depenent repository defined in config:
+
+```config
+dependencies:
+  dependent-repo-alias: https://github.com/dotnet/docfx-dependent#master
+```
+
+The folder structure in dependent repo is like below:
+
+```
+/
+|- subfolder/
+|  \- file2.md
+|  \- toc.md
+\- file1.md
+\- toc.md
+```
+
+You can link a resouce stored in dependent repo:
+
+```markdown
+[dependeny file1](dependent-repo-alias\file1.md)
+[dependeny file2](dependent-repo-alias\subfolder\file2.md)
+```
+[//]: # (what's the resolved href?)
 
 ## Link to an external resource
