@@ -1,3 +1,4 @@
+[\\]: # (TODO: correct the links once the corresponding docs have been added)
 # Reference Link
 As we know, markdown provides a [syntax](https://daringfireball.net/projects/markdown/syntax#link) to create hyperlinks.
 For example, the following syntax:
@@ -151,7 +152,7 @@ DocFX also supports to use relative path in inline HTML. Path in HTML link (`<a>
 > [Automatic link](https://daringfireball.net/projects/markdown/syntax#autolink) doesn't support relative path.
 > If you write something like `<file.md>`, it will be treated as an HTML tag rather than a link.
 
-## Link to a dependency resource
+## Link to a resource stored in [dependent repository](config.md)
 
 Besides using file path to link to a local resource, DocFX also supports to link a resource stored in [dependent repository](config.md)
 
@@ -174,8 +175,8 @@ The folder structure in dependent repo is like below:
 You can link a resource stored in dependent repo:
 
 ```markdown
-[dependeny file1](dependent-repo-alias\file1.md)
-[dependeny file2](dependent-repo-alias\subfolder\file2.md)
+[dependency file1](dependent-repo-alias\file1.md)
+[dependency file2](dependent-repo-alias\subfolder\file2.md)
 ```
 [//]: # (what's the resolved href?)
 
