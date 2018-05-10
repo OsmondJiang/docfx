@@ -1,24 +1,27 @@
 # Reference Link
-DocFX makes it easy to link documents together.
-
 As we know, markdown provides a [syntax](https://daringfireball.net/projects/markdown/syntax#link) to create hyperlinks.
 For example, the following syntax:
+
 ```markdown
 [bing](http://www.bing.com)
 ```
-Will render to:
-
-```html
-<a href="http://www.bing.com">bing</a>
+or 
+```markdown
+[resource](../about.html)
 ```
 
-Here the url in the link could be either absolute url pointing to external resource(`www.bing.com` in the above example),
-or a relative url pointing to a local resource on the same server (for example, `about.html`).
+Here the link could be either absolute url pointing to external resource(`www.bing.com` in the above example),
+or a relative path pointing to a local resource on the same server (for example, `about.html`).
+
+DocFX also provide ways to link documents together, and we need follow some rules to make it easy to switch between platforms without friction.
+  - The relative path pointing to a local resource should be **case senstive**.
+  - We support both forward slash `\` and back slash `/` in the link.
+  - We **don't** allow two files with same name but different casing in same repo.
 
 ## Link to a local resource
 
-In DocFX, you can link to a locale resource:
-  - Link to a local resource to create a hyperlink, like `[docfx](docs/design/tableofcontent.md)`
+In DocFX, you can link to a locale resource to:
+  - Create a hyperlink, like `[docfx](docs/design/tableofcontent.md)`
   - Include a token, like `[!include[file name](subfolder/token.md)]`
   - Include a [nested toc](table-of-contents.md#link-to-another-toc-file), like `#[child](subfolder/toc.md)` or `#[child](subfolder/)`
   
@@ -59,7 +62,7 @@ or
 
 ```json
 {
-  "toc_title": "file2 title"
+  "toc_title": "file2 title",
   "href": "subfolder/file2.html"
 }
 ```
@@ -184,4 +187,3 @@ For example, you can link docfx spec page:
 ```
 
 But please notice that DocFX won't check its correctness for you and will keep it as-is in the output page.
-
