@@ -18,7 +18,7 @@ or a relative url pointing to a local resource on the same server (for example, 
 ## Link to a local resource
 
 In DocFX, you can link to a locale resource:
-  - Create a hyperlink, like `[docfx](docs/design/tableofcontent.md)`
+  - Link to a local resource to create a hyperlink, like `[docfx](docs/design/tableofcontent.md)`
   - Include a token, like `[!include[file name](subfolder/token.md)]`
   - Include a [nested toc](table-of-contents.md#link-to-another-toc-file), like `#[child](subfolder/toc.md)` or `#[child](subfolder/)`
   
@@ -33,7 +33,7 @@ Below are the details of each case and all of them use below folder structure ex
 \- toc.md
 ```
 
-### Create a hyperlink using relative path
+### Link to a locale resource to create a hyperlink using relative path
 
 In DocFX, you can create a hyperlink using its relative path in the source directory.
 
@@ -112,8 +112,9 @@ or
 
 All links in `subfolder\toc.md` are relative to the `subfolder\toc.md` itself, even when it's included by `toc.md`.
 
-### A easy way to write relative path
+### The other ways to link to a locale resource
 
+#### Relative path start with `~`
 Sometimes you may find it's complicated to calculate relative path between two files.
 DocFX also supports path starts with `~` to represent path relative to the root directory of your project (i.e. where `docfx.yml` is located).
 This kind of path will also be validated and resolved during build.
@@ -127,6 +128,20 @@ For example, you can write the following links in `subfolder\file2.md` to refere
 ```
 
 Both will be resolved to `../file1.html`.
+
+#### Absolute path start with `\` or `/`
+
+It's recommended to always use relative path to reference another file in the same project. Relative path will be resolved during build and produce build warning if the target file does not exist.
+
+You can also use absolute path (path starts with `/`) to link to another file, but DocFX won't check its correctness for you and will keep it **as-is** in the output HTML.
+That means you should use the output file path as absolute path. For example, in the above case, you can also write the link as follows:
+
+```markdown
+[file2](/subfolder/file2.html)
+```
+> [!Warning]
+> [Automatic link](https://daringfireball.net/projects/markdown/syntax#autolink) doesn't support relative path.
+> If you write something like `<file.md>`, it will be treated as an HTML tag rather than a link.
 
 ## Link to a dependency resource
 
@@ -159,3 +174,14 @@ You can link a resouce stored in dependent repo:
 [//]: # (what's the resolved href?)
 
 ## Link to an external resource
+
+You can also use absolute url to link to a external resource.
+
+For example, you can link docfx spec page:
+
+```markdown
+[docfx spec](https://github.com/dotnet/docfx/doc/index.html)
+```
+
+But please notice that DocFX won't check its correctness for you and will keep it as-is in the output page.
+
