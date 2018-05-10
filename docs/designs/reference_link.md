@@ -142,6 +142,11 @@ That means you should use the output file path as absolute path. For example, in
 ```markdown
 [file2](/subfolder/file2.html)
 ```
+
+#### Relative path in [inline HTML](https://daringfireball.net/projects/markdown/syntax#html)
+
+DocFX also supports to use relative path in inline HTML. Path in HTML link (`<a>`), image (`<img>`), script (`<script>`) and css (`<link>`) will also be resolved if they're relative path
+
 > [!Warning]
 > [Automatic link](https://daringfireball.net/projects/markdown/syntax#autolink) doesn't support relative path.
 > If you write something like `<file.md>`, it will be treated as an HTML tag rather than a link.
