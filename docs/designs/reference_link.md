@@ -14,7 +14,7 @@ Here the link could be either absolute url pointing to external resource(`www.bi
 or a relative path pointing to a local resource on the same server (for example, `about.html`).
 
 DocFX also provide ways to link documents together, and we need follow some rules to make it easy to switch between platforms without friction.
-  - The relative path pointing to a local resource should be **case senstive**.
+  - The relative path pointing to a local resource should be **case sensitive**.
   - We support both forward slash `\` and back slash `/` in the link.
   - We **don't** allow two files with same name but different casing in same repo.
 
@@ -76,7 +76,7 @@ The resolved hyper link is the output path for file2.md, so you can see the sour
 > [!Note]
 > The referenced files will be automatically built even it's not in the [content scope](config.md)
 
-### Include a token using relaive path
+### Include a token using relative path
 
 The [file include](../spec/docfx_flavored_markdown.md#file-inclusion) syntax is using relative path to include a token file.
 
@@ -95,7 +95,7 @@ All links in `file2.md` are relative to the `file2.md` itself, even when it's in
 >
 > [!Tip]
 > Each file in `docfx.yml` will build into an output file. But included files usually don't need to build into individual
-> topics. So it's not recommended to include them in `docfx.yml`, they should be excluded from the init scope `docfx.yml` if needed.
+> topics. So it's not recommended to include them in `docfx.yml`, they should be excluded from the initial scope `docfx.yml` if needed.
 
 ### Include a [nested toc](table-of-contents.md#link-to-another-toc-file) using relative path
 
@@ -117,7 +117,7 @@ All links in `subfolder\toc.md` are relative to the `subfolder\toc.md` itself, e
 
 ### The other ways to link to a locale resource
 
-#### Relative path start with `~`
+#### Relative path starts with `~`
 Sometimes you may find it's complicated to calculate relative path between two files.
 DocFX also supports path starts with `~` to represent path relative to the root directory of your project (i.e. where `docfx.yml` is located).
 This kind of path will also be validated and resolved during build.
@@ -132,7 +132,7 @@ For example, you can write the following links in `subfolder\file2.md` to refere
 
 Both will be resolved to `../file1.html`.
 
-#### Absolute path start with `\` or `/`
+#### Absolute path starts with `\` or `/`
 
 It's recommended to always use relative path to reference another file in the same project. Relative path will be resolved during build and produce build warning if the target file does not exist.
 
@@ -153,9 +153,9 @@ DocFX also supports to use relative path in inline HTML. Path in HTML link (`<a>
 
 ## Link to a dependency resource
 
-Besides using file path to link to a local resource, DocFX also supports to link a resource stored in [dependenct repository](config.md)
+Besides using file path to link to a local resource, DocFX also supports to link a resource stored in [dependent repository](config.md)
 
-For example you have a depenent repository defined in config:
+For example you have a dependent repository defined in config:
 
 ```config
 dependencies:
@@ -168,12 +168,10 @@ The folder structure in dependent repo is like below:
 /
 |- subfolder/
 |  \- file2.md
-|  \- toc.md
 \- file1.md
-\- toc.md
 ```
 
-You can link a resouce stored in dependent repo:
+You can link a resource stored in dependent repo:
 
 ```markdown
 [dependeny file1](dependent-repo-alias\file1.md)
@@ -183,9 +181,9 @@ You can link a resouce stored in dependent repo:
 
 ## Link to an external resource
 
-You can also use absolute url to link to a external resource.
+You can also use absolute url to link to an external resource.
 
-For example, you can link docfx spec page:
+For example, you can link DocFX spec page:
 
 ```markdown
 [docfx spec](https://github.com/dotnet/docfx/doc/index.html)
