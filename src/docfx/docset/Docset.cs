@@ -90,7 +90,7 @@ namespace Microsoft.Docs.Build
 
         private readonly CommandLineOptions _options;
         private readonly Report _report;
-        private readonly Dictionary<string, Repository> _repositories;
+        private readonly Lazy<Dictionary<string, Repository>> _repositories;
         private readonly Lazy<HashSet<Document>> _buildScope;
         private readonly Lazy<HashSet<Document>> _scanScope;
         private readonly Lazy<RedirectionMap> _redirections;
@@ -153,14 +153,14 @@ namespace Microsoft.Docs.Build
                 return new LegacyTemplate(RestoreMap.GetGitRestorePath($"{themeRemote}#{themeBranch}"), Locale);
             });
 
-            _repositories = LoadRepositories();
+            _repositories = new Lazy<Dictionary<string, Repository>>(() => LoadRepositories());
         }
 
         public Repository GetRepository(string filePath)
         {
-            var documentFolder = PathUtility.NormalizeFolder(Path.GetDirectoryName(Path.Combine(DocsetPath, filePath)));
+            var fullPath = Path.GetDirectoryName(Path.Combine(DocsetPath, filePath));
 
-            if (_repositories.TryGetValue(documentFolder, out var repository))
+            if (_repositories.Value.TryGetValue(PathUtility.NormalizeFile(fullPath), out var repository))
             {
                 return repository;
             }
@@ -227,14 +227,13 @@ namespace Microsoft.Docs.Build
 
             ParallelUtility.ForEach(
                     Directory.EnumerateFiles(DocsetPath, "*.*", SearchOption.AllDirectories),
-                    file => GetRepository(file));
+                    file => GetRepository(PathUtility.NormalizeFile(file)));
 
             Repository GetRepository(string fullPath)
             {
-                fullPath = PathUtility.NormalizeFolder(fullPath);
                 if (GitUtility.IsRepo(fullPath))
                 {
-                    if (string.Equals(fullPath, DocsetPath, PathUtility.PathComparison))
+                    if (string.Equals(fullPath, DocsetPath.Substring(0, DocsetPath.Length - 1), PathUtility.PathComparison))
                     {
                         return Repository;
                     }
@@ -242,9 +241,9 @@ namespace Microsoft.Docs.Build
                     return Repository.Create(fullPath, branch: null);
                 }
 
-                var parent = PathUtility.NormalizeFolder(Path.GetDirectoryName(fullPath));
+                var parent = Path.GetDirectoryName(fullPath);
                 return !string.IsNullOrEmpty(parent)
-                    ? repositoryByFolder.GetOrAdd(parent, GetRepository)
+                    ? repositoryByFolder.GetOrAdd(PathUtility.NormalizeFile(parent), GetRepository)
                     : null;
             }
 
