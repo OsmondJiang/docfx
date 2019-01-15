@@ -21,16 +21,15 @@ namespace Microsoft.Docs.Build
         }
 
         public static async Task Restore(
-            string docsetPath,
             Config config,
             Func<string, DependencyLock, Task> restoreChild,
             string locale,
             bool @implicit,
-            bool isDependencyRepo,
+            Repository rootRepository,
             DependencyLock dependencyLock)
         {
             var gitDependencies =
-                from git in GetGitDependencies(docsetPath, config, locale, isDependencyRepo)
+                from git in GetGitDependencies(config, locale, rootRepository)
                 group (git.branch, git.flags)
                 by git.remote;
 
@@ -58,9 +57,10 @@ namespace Microsoft.Docs.Build
                 Directory.SetLastWriteTimeUtc(child.worktree, DateTime.UtcNow);
             }
 
-            if (!isDependencyRepo && LocalizationUtility.TryGetContributionBranch(docsetPath, out var contributionBranch, out var repo))
+            // fetch contribution branch
+            if (rootRepository != null && LocalizationUtility.TryGetContributionBranch(rootRepository, out var contributionBranch))
             {
-                await GitUtility.Fetch(repo.Path, repo.Remote, contributionBranch, config);
+                await GitUtility.Fetch(rootRepository.Path, rootRepository.Remote, contributionBranch, config);
             }
 
             async Task<List<(string worktree, DependencyLock dependencyLock)>> RestoreGitRepo(IGrouping<string, (string branch, GitFlags flags)> group)
@@ -118,16 +118,16 @@ namespace Microsoft.Docs.Build
                             return;
                         }
 
-                        // use branch name instead of commit hash
-                        // https://git-scm.com/docs/git-worktree#_commands
-                        var workTreeHead = $"{HrefUtility.EscapeUrlSegment(branch)}-{branch.GetMd5HashShort()}-{GitUtility.RevParse(repoPath, branch)}";
+                        var gitDependencyLock = dependencyLock?.GetGitDependencyLock(remote, branch);
+                        var headCommit = gitDependencyLock?.Commit ?? GitUtility.RevParse(repoPath, branch);
+                        var workTreeHead = $"{HrefUtility.EscapeUrlSegment(branch)}-{branch.GetMd5HashShort()}-{headCommit}";
                         var workTreePath = Path.GetFullPath(Path.Combine(repoPath, "../", workTreeHead)).Replace('\\', '/');
 
                         if (existingWorkTreePath.TryAdd(workTreePath))
                         {
                             try
                             {
-                                await GitUtility.AddWorkTree(repoPath, branch, workTreePath);
+                                await GitUtility.AddWorkTree(repoPath, headCommit, workTreePath);
                             }
                             catch (Exception ex)
                             {
@@ -135,13 +135,13 @@ namespace Microsoft.Docs.Build
                             }
                         }
 
-                        worktreePaths.Add((workTreePath, dependencyLock?.GetGitDependencyLock(remote, branch)));
+                        worktreePaths.Add((workTreePath, gitDependencyLock));
                     });
                 }
             }
         }
 
-        private static IEnumerable<(string remote, string branch, GitFlags flags)> GetGitDependencies(string docsetPath, Config config, string locale, bool isDependencyRepo)
+        private static IEnumerable<(string remote, string branch, GitFlags flags)> GetGitDependencies(Config config, string locale, Repository rootRepository)
         {
             var dependencies = config.Dependencies.Values.Select(url =>
             {
@@ -151,9 +151,9 @@ namespace Microsoft.Docs.Build
 
             dependencies = dependencies.Concat(GetThemeGitDependencies(config, locale));
 
-            if (!isDependencyRepo)
+            if (rootRepository != null)
             {
-                dependencies = dependencies.Concat(GetLocalizationGitDependencies(docsetPath, config, locale));
+                dependencies = dependencies.Concat(GetLocalizationGitDependencies(rootRepository, config, locale));
             }
 
             return dependencies;
@@ -174,7 +174,7 @@ namespace Microsoft.Docs.Build
         /// <summary>
         /// Get source repository or localized repository
         /// </summary>
-        private static IEnumerable<(string remote, string branch, GitFlags flags)> GetLocalizationGitDependencies(string docsetPath, Config config, string locale)
+        private static IEnumerable<(string remote, string branch, GitFlags flags)> GetLocalizationGitDependencies(Repository repo, Config config, string locale)
         {
             if (string.IsNullOrEmpty(locale))
             {
@@ -186,7 +186,6 @@ namespace Microsoft.Docs.Build
                 yield break;
             }
 
-            var repo = Repository.Create(docsetPath);
             if (repo == null || string.IsNullOrEmpty(repo.Remote))
             {
                 yield break;

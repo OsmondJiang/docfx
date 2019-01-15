@@ -21,12 +21,13 @@ namespace Microsoft.Docs.Build
             // because Docset assumes the repo to physically exist on disk.
             using (Progress.Start("Restore dependencies"))
             {
+                var repository = Repository.Create(docsetPath, branch: null);
                 var restoredDocsets = new ConcurrentDictionary<string, int>(PathUtility.PathComparer);
-                var localeToRestore = LocalizationUtility.GetBuildLocale(docsetPath, options);
+                var localeToRestore = LocalizationUtility.GetBuildLocale(repository, options);
 
-                await RestoreDocset(docsetPath);
+                await RestoreDocset(docsetPath, rootRepository: repository);
 
-                async Task RestoreDocset(string docset, bool root = true, DependencyLock dependencyLock = null)
+                async Task RestoreDocset(string docset, bool root = true, DependencyLock dependencyLock = null, Repository rootRepository = null)
                 {
                     if (restoredDocsets.TryAdd(docset, 0))
                     {
@@ -39,7 +40,14 @@ namespace Microsoft.Docs.Build
                         }
 
                         // no need to restore child docsets' loc repository
-                        await RestoreOneDocset(docset, localeToRestore, config, async (subDocset, subDependencyLock) => await RestoreDocset(subDocset, root: false, dependencyLock: subDependencyLock), isDependencyRepo: !root, dependencyLock);
+                        await RestoreOneDocset(
+                            docset,
+                            localeToRestore,
+                            config,
+                            async (subDocset, subDependencyLock)
+                            => await RestoreDocset(subDocset, root: false, dependencyLock: subDependencyLock),
+                            rootRepository,
+                            dependencyLock);
                     }
                 }
             }
@@ -49,7 +57,7 @@ namespace Microsoft.Docs.Build
                 string locale,
                 Config config,
                 Func<string, DependencyLock, Task> restoreChild,
-                bool isDependencyRepo,
+                Repository rootRepository,
                 DependencyLock dependencyLock)
             {
                 // restore extend url firstly
@@ -68,12 +76,12 @@ namespace Microsoft.Docs.Build
                 dependencyLock = dependencyLock ?? await RestoreLock.Load(docset, extendedConfig);
 
                 // restore git repos includes dependency repos and loc repos
-                await RestoreGit.Restore(docset, extendedConfig, restoreChild, locale, @implicit, isDependencyRepo, dependencyLock);
+                await RestoreGit.Restore(extendedConfig, restoreChild, locale, @implicit, rootRepository, dependencyLock);
 
                 // restore urls except extend url
                 await ParallelUtility.ForEach(
                     extendedConfig.GetFileReferences().Where(HrefUtility.IsHttpHref),
-                    restoreUrl => RestoreFile.Restore(restoreUrl, extendedConfig, @implicit, dependencyLock));
+                    restoreUrl => RestoreFile.Restore(restoreUrl, extendedConfig, @implicit));
             }
         }
     }
