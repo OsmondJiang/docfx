@@ -20,30 +20,42 @@ namespace Microsoft.Docs.Build
             DepthOne = 1 << 2,
         }
 
-        public static async Task Restore(string docsetPath, Config config, Func<string, Task> restoreChild, string locale, bool @implicit, bool isDependencyRepo)
+        public static async Task Restore(
+            string docsetPath,
+            Config config,
+            Func<string, DependencyLock, Task> restoreChild,
+            string locale,
+            bool @implicit,
+            bool isDependencyRepo,
+            DependencyLock dependencyLock)
         {
             var gitDependencies =
                 from git in GetGitDependencies(docsetPath, config, locale, isDependencyRepo)
                 group (git.branch, git.flags)
                 by git.remote;
 
-            var workTrees = new ConcurrentBag<string>();
+            var children = new ConcurrentBag<(string worktree, DependencyLock dependencyLock)>();
 
             await ParallelUtility.ForEach(
                 gitDependencies,
                 async group =>
                 {
-                    foreach (var worktree in await RestoreGitRepo(group))
+                    foreach (var child in await RestoreGitRepo(group))
                     {
-                        workTrees.Add(worktree);
+                        children.Add(child);
                     }
                 },
                 Progress.Update);
 
-            foreach (var workTree in workTrees)
+            foreach (var child in children)
+            {
+                await restoreChild(child.worktree, child.dependencyLock);
+            }
+
+            foreach (var child in children)
             {
                 // update the last write time
-                Directory.SetLastWriteTimeUtc(workTree, DateTime.UtcNow);
+                Directory.SetLastWriteTimeUtc(child.worktree, DateTime.UtcNow);
             }
 
             if (!isDependencyRepo && LocalizationUtility.TryGetContributionBranch(docsetPath, out var contributionBranch, out var repo))
@@ -51,9 +63,9 @@ namespace Microsoft.Docs.Build
                 await GitUtility.Fetch(repo.Path, repo.Remote, contributionBranch, config);
             }
 
-            async Task<List<string>> RestoreGitRepo(IGrouping<string, (string branch, GitFlags flags)> group)
+            async Task<List<(string worktree, DependencyLock dependencyLock)>> RestoreGitRepo(IGrouping<string, (string branch, GitFlags flags)> group)
             {
-                var worktreePaths = new List<string>();
+                var worktreePaths = new List<(string worktree, DependencyLock dependencyLock)>();
                 var remote = group.Key;
                 var branches = group.Select(g => g.branch).ToArray();
                 var depthOne = group.All(g => (g.flags & GitFlags.DepthOne) != 0);
@@ -66,7 +78,7 @@ namespace Microsoft.Docs.Build
                         if (RestoreMap.TryGetGitRestorePath(remote, branch, out var existingPath))
                         {
                             branchesToFetch.Remove(branch);
-                            worktreePaths.Add(existingPath);
+                            worktreePaths.Add((existingPath, dependencyLock?.GetGitDependencyLock(remote, branch)));
                         }
                     }
                 }
@@ -91,11 +103,6 @@ namespace Microsoft.Docs.Build
                             await AddWorkTrees();
                         }
                     });
-
-                foreach (var worktree in worktreePaths)
-                {
-                    await restoreChild(worktree);
-                }
 
                 return worktreePaths;
 
@@ -128,7 +135,7 @@ namespace Microsoft.Docs.Build
                             }
                         }
 
-                        worktreePaths.Add(workTreePath);
+                        worktreePaths.Add((workTreePath, dependencyLock?.GetGitDependencyLock(remote, branch)));
                     });
                 }
             }

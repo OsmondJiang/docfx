@@ -13,7 +13,7 @@ namespace Microsoft.Docs.Build
 {
     internal static class RestoreFile
     {
-        public static async Task Restore(string url, Config config, bool @implict = false)
+        public static async Task Restore(string url, Config config, bool @implict = false, DependencyLock dependencyLock = null)
         {
             var restoredPath = await RestoreUrl();
 
