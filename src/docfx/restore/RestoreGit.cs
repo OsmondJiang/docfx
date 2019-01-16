@@ -119,7 +119,15 @@ namespace Microsoft.Docs.Build
                         }
 
                         var gitDependencyLock = dependencyLock?.GetGitDependencyLock(remote, branch);
-                        var headCommit = gitDependencyLock?.Commit ?? GitUtility.RevParse(repoPath, branch);
+                        var headCommit = GitUtility.RevParse(repoPath, branch);
+
+                        if (string.IsNullOrEmpty(headCommit))
+                        {
+                            throw Errors.GitCloneFailed(remote, branches, $"'{branch}' can't be found").ToException();
+                        }
+
+                        headCommit = gitDependencyLock?.Commit ?? headCommit;
+
                         var workTreeHead = $"{HrefUtility.EscapeUrlSegment(branch)}-{branch.GetMd5HashShort()}-{headCommit}";
                         var workTreePath = Path.GetFullPath(Path.Combine(repoPath, "../", workTreeHead)).Replace('\\', '/');
 
