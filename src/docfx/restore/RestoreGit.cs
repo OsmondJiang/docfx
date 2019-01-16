@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -68,17 +69,17 @@ namespace Microsoft.Docs.Build
                 var worktreePaths = new List<(string worktree, DependencyLock dependencyLock)>();
                 var remote = group.Key;
                 var branches = group.Select(g => g.branch).ToArray();
-                var depthOne = group.All(g => (g.flags & GitFlags.DepthOne) != 0);
+                var depthOne = group.All(g => (g.flags & GitFlags.DepthOne) != 0) && !(dependencyLock?.ContainsGitLock(remote) ?? false);
                 var branchesToFetch = new HashSet<string>(branches);
 
                 if (@implicit)
                 {
                     foreach (var branch in branches)
                     {
-                        if (RestoreMap.TryGetGitRestorePath(remote, branch, out var existingPath))
+                        if (RestoreMap.TryGetGitRestorePath(remote, branch, out var existingPath, dependencyLock?.GetGitLock(remote, branch)?.Commit))
                         {
                             branchesToFetch.Remove(branch);
-                            worktreePaths.Add((existingPath, dependencyLock?.GetGitDependencyLock(remote, branch)));
+                            worktreePaths.Add((existingPath, dependencyLock?.GetGitLock(remote, branch)));
                         }
                     }
                 }
@@ -118,7 +119,7 @@ namespace Microsoft.Docs.Build
                             return;
                         }
 
-                        var gitDependencyLock = dependencyLock?.GetGitDependencyLock(remote, branch);
+                        var gitDependencyLock = dependencyLock?.GetGitLock(remote, branch);
                         var headCommit = GitUtility.RevParse(repoPath, branch);
 
                         if (string.IsNullOrEmpty(headCommit))
@@ -127,8 +128,7 @@ namespace Microsoft.Docs.Build
                         }
 
                         headCommit = gitDependencyLock?.Commit ?? headCommit;
-
-                        var workTreeHead = $"{HrefUtility.EscapeUrlSegment(branch)}-{branch.GetMd5HashShort()}-{headCommit}";
+                        var workTreeHead = $"{GetWorkTreeHeadPrefix(branch, !string.IsNullOrEmpty(gitDependencyLock?.Commit))}{headCommit}";
                         var workTreePath = Path.GetFullPath(Path.Combine(repoPath, "../", workTreeHead)).Replace('\\', '/');
 
                         if (existingWorkTreePath.TryAdd(workTreePath))
@@ -147,6 +147,16 @@ namespace Microsoft.Docs.Build
                     });
                 }
             }
+        }
+
+        // todo: change to re-usable worktree prefix but stateful
+        public static string GetWorkTreeHeadPrefix(string branch, bool isLocked = false)
+        {
+            Debug.Assert(!string.IsNullOrEmpty(branch));
+
+            var workTreeHeadPrefix = isLocked ? "locked-" : "";
+
+            return $"{workTreeHeadPrefix}{HrefUtility.EscapeUrlSegment(branch)}-{branch.GetMd5HashShort()}-";
         }
 
         private static IEnumerable<(string remote, string branch, GitFlags flags)> GetGitDependencies(Config config, string locale, Repository rootRepository)

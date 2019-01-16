@@ -2,6 +2,7 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Microsoft.Docs.Build
 {
@@ -11,7 +12,7 @@ namespace Microsoft.Docs.Build
 
         public Dictionary<string, DependencyVersion> Downloads { get; set; } = new Dictionary<string, DependencyVersion>();
 
-        public DependencyLock GetGitDependencyLock(string href, string branch)
+        public DependencyLock GetGitLock(string href, string branch)
         {
             if (Git.TryGetValue($"{href}#{branch}", out var dependencyLock))
             {
@@ -24,6 +25,11 @@ namespace Microsoft.Docs.Build
             }
 
             return null;
+        }
+
+        public bool ContainsGitLock(string href)
+        {
+            return Git.ContainsKey(href) || Git.Keys.Any(g => g.StartsWith(href));
         }
     }
 }

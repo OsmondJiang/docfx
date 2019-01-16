@@ -22,23 +22,24 @@ namespace Microsoft.Docs.Build
 
         public static string GetGitRestorePath(string remote, string branch)
         {
-            if (!TryGetGitRestorePath(remote, branch, out var result))
+            if (!TryGetGitRestorePath(remote, branch, out var result, commit: null))
             {
                 throw Errors.NeedRestore($"{remote}#{branch}").ToException();
             }
             return result;
         }
 
-        public static bool TryGetGitRestorePath(string remote, string branch, out string result)
+        public static bool TryGetGitRestorePath(string remote, string branch, out string result, string commit = null)
         {
+            var locked = !string.IsNullOrEmpty(commit);
             result = s_gitPath.AddOrUpdate(
                 (remote, branch),
-                new Lazy<string>(FindLastModifiedGitRepository),
-                (_, existing) => existing.Value != null ? existing : new Lazy<string>(FindLastModifiedGitRepository)).Value;
+                new Lazy<string>(FindGitRepository),
+                (_, existing) => existing.Value != null ? existing : new Lazy<string>(FindGitRepository)).Value;
 
             return Directory.Exists(result);
 
-            string FindLastModifiedGitRepository()
+            string FindGitRepository()
             {
                 var repoPath = AppData.GetGitDir(remote);
 
@@ -50,8 +51,9 @@ namespace Microsoft.Docs.Build
                 return (
                     from path in Directory.GetDirectories(repoPath, "*", SearchOption.TopDirectoryOnly)
                     let name = Path.GetFileName(path)
-                    where name.StartsWith(HrefUtility.EscapeUrlSegment(branch) + "-" + branch.GetMd5HashShort() + "-") &&
-                          GitUtility.IsWorkTreeCheckoutComplete(repoPath, name)
+                    where ((locked && name == $"{RestoreGit.GetWorkTreeHeadPrefix(branch, locked)}{commit}") ||
+                        name.StartsWith(RestoreGit.GetWorkTreeHeadPrefix(branch))) &&
+                        GitUtility.IsWorkTreeCheckoutComplete(repoPath, name)
                     orderby new DirectoryInfo(path).LastWriteTimeUtc
                     select path).FirstOrDefault();
             }
