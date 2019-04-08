@@ -55,10 +55,6 @@ namespace Microsoft.Docs.Build
 
                 var saveGitHubUserCache = context.GitHubUserCache.SaveChanges(config);
 
-                xrefMap.OutputXrefMap(context);
-                context.Output.WriteJson(publishManifest, ".publish.json");
-                context.Output.WriteJson(sourceDependencies.ToDependencyMapModel(), ".dependencymap.json");
-
                 if (options.Legacy)
                 {
                     if (config.Output.Json)
@@ -70,6 +66,12 @@ namespace Microsoft.Docs.Build
                     {
                         context.Template.CopyTo(outputPath);
                     }
+                }
+                else
+                {
+                    xrefMap.OutputXrefMap(context);
+                    context.Output.WriteJson(publishManifest, ".publish.json");
+                    context.Output.WriteJson(sourceDependencies.ToDependencyMapModel(), ".dependencymap.json");
                 }
 
                 errors.AddIfNotNull(await saveGitHubUserCache);

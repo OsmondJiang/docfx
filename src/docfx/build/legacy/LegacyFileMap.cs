@@ -51,7 +51,7 @@ namespace Microsoft.Docs.Build
                     file_mapping = items.ToDictionary(
                         key => PathUtility.NormalizeFile(key.legacyFilePathRelativeToBaseFolder), v => v.fileMapItem),
                 },
-                Path.Combine(docset.Config.DocumentId.SiteBasePath, "filemap.json"));
+                "filemap.json");
         }
     }
 }

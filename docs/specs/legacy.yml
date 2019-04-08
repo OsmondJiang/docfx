@@ -77,6 +77,7 @@ inputs:
     documentType: LandingData
     title: REST API Documentation
     abstract:
+
       description: <a href="~/b">"b"</a>
       menu:
         items:
@@ -120,5 +121,3 @@ outputs:
   .dependency-map.json:
   filemap.json:
   op_aggregated_file_map_info.json:
-  .publish.json:
-  xrefmap.json:
