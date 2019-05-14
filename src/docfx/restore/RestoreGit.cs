@@ -141,8 +141,7 @@ namespace Microsoft.Docs.Build
                                     {
                                         // clean existing work tree folder
                                         // it may be dirty caused by last failed restore action
-                                        if (Directory.Exists(workTreePath))
-                                            Directory.Delete(workTreePath, true);
+                                        ForceDeleteDir(workTreePath);
                                         GitUtility.AddWorkTree(repoPath, headCommit, workTreePath);
                                     }
                                     catch (Exception ex)
@@ -251,6 +250,35 @@ namespace Microsoft.Docs.Build
             {
                 // Bilingual repos also depend on non bilingual branch for commit history
                 yield return (remote, contributionBranch, GitFlags.NoCheckout);
+            }
+        }
+
+        private static void ForceDeleteDir(string root)
+        {
+            if (!Directory.Exists(root))
+            {
+                return;
+            }
+
+            var dir = new DirectoryInfo(root);
+
+            if (dir.Exists)
+            {
+                SetAttributesNormal(dir);
+                dir.Delete(true);
+            }
+
+            void SetAttributesNormal(DirectoryInfo sub)
+            {
+                foreach (var subDir in sub.GetDirectories())
+                {
+                    SetAttributesNormal(subDir);
+                    subDir.Attributes = FileAttributes.Normal;
+                }
+                foreach (var file in sub.GetFiles())
+                {
+                    file.Attributes = FileAttributes.Normal;
+                }
             }
         }
 
