@@ -2,9 +2,11 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Threading;
 using Newtonsoft.Json;
@@ -16,6 +18,7 @@ namespace Microsoft.Docs.Build
 {
     internal static class JsonUtility
     {
+        private static readonly ConcurrentDictionary<Type, JsonSchemaValidator> s_jsonSchema = new ConcurrentDictionary<Type, JsonSchemaValidator>();
         private static readonly NamingStrategy s_namingStrategy = new CamelCaseNamingStrategy();
         private static readonly JsonConverter[] s_jsonConverters =
         {
@@ -31,14 +34,7 @@ namespace Microsoft.Docs.Build
             DateParseHandling = DateParseHandling.None,
             Converters = s_jsonConverters,
             ContractResolver = new JsonContractResolver { NamingStrategy = s_namingStrategy },
-        });
-
-        private static readonly JsonSerializer s_schemaValidationSerializer = JsonSerializer.Create(new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore,
-            MetadataPropertyHandling = MetadataPropertyHandling.Ignore,
-            Converters = s_jsonConverters,
-            ContractResolver = new JsonContractResolver { NamingStrategy = s_namingStrategy },
+            Error = (sender, args) => args.ErrorContext.Handled = true,
         });
 
         private static readonly JsonSerializer s_indentSerializer = JsonSerializer.Create(new JsonSerializerSettings
@@ -50,16 +46,7 @@ namespace Microsoft.Docs.Build
             ContractResolver = new JsonContractResolver { NamingStrategy = s_namingStrategy },
         });
 
-        private static readonly ThreadLocal<Stack<Status>> t_status = new ThreadLocal<Stack<Status>>(() => new Stack<Status>());
-
         internal static JsonSerializer Serializer => s_serializer;
-
-        internal static Status State => t_status.Value.Peek();
-
-        static JsonUtility()
-        {
-            s_schemaValidationSerializer.Error += HandleError;
-        }
 
         /// <summary>
         /// Fast pass to read MIME from $schema attribute.
@@ -154,21 +141,11 @@ namespace Microsoft.Docs.Build
             JToken token,
             Type type)
         {
-            try
-            {
-                var errors = new List<Error>();
-                var status = new Status { Errors = errors, Reader = new JTokenReader(token) };
+            var schemaValidator = GetSchemaValidator(type);
+            var errors = schemaValidator.Validate(token);
+            var value = s_serializer.Deserialize(new JTokenReader(token), type);
 
-                t_status.Value.Push(status);
-
-                var value = s_schemaValidationSerializer.Deserialize(status.Reader, type);
-
-                return (errors, value);
-            }
-            finally
-            {
-                t_status.Value.Pop();
-            }
+            return (errors, value);
         }
 
         /// <summary>
@@ -436,20 +413,6 @@ namespace Microsoft.Docs.Build
             return token;
         }
 
-        private static void HandleError(object sender, Newtonsoft.Json.Serialization.ErrorEventArgs args)
-        {
-            // only log an error once
-            if (args.CurrentObject == args.ErrorContext.OriginalObject)
-            {
-                if (args.ErrorContext.Error is JsonReaderException || args.ErrorContext.Error is JsonSerializationException)
-                {
-                    var state = t_status.Value.Peek();
-                    state.Errors.Add(Errors.ViolateSchema(GetSourceInfo(state.Reader.CurrentToken), ParseException(args.ErrorContext.Error).message));
-                    args.ErrorContext.Handled = true;
-                }
-            }
-        }
-
         private static Error ToError(Exception ex, string file)
         {
             var (message, line, column) = ParseException(ex);
@@ -480,11 +443,72 @@ namespace Microsoft.Docs.Build
             return message;
         }
 
-        internal class Status
-        {
-            public JTokenReader Reader { get; set; }
+        private static JsonSchemaValidator GetSchemaValidator(Type type)
+            => s_jsonSchema.GetOrAdd(type, key => new JsonSchemaValidator(GetJsonSchema(key)));
 
-            public List<Error> Errors { get; set; }
-       }
+        private static JsonSchema GetJsonSchema(Type type, JsonSchema root = null)
+        {
+            var jsonSchema = new JsonSchema();
+            if (root == null)
+                root = jsonSchema;
+
+            var jsonSchemaType = GetJsonSchemaType(type);
+            jsonSchema.Type = new[] { jsonSchemaType };
+
+            if (jsonSchemaType == JsonSchemaType.Object)
+            {
+                foreach (var property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    if (GetJsonSchemaType(property.PropertyType) == JsonSchemaType.Object)
+                    {
+                        if (!root.Definitions.ContainsKey(property.Name))
+                            root.Definitions.Add(property.Name, GetJsonSchema(property.PropertyType, root));
+                        jsonSchema.Properties.Add(property.Name, new JsonSchema { Ref = $"#/definitions/{property.Name}" });
+                    }
+                    else
+                    {
+                        jsonSchema.Properties.Add(property.Name, GetJsonSchema(property.PropertyType, root));
+                    }
+                }
+            }
+
+            if (jsonSchemaType == JsonSchemaType.Array)
+            {
+                jsonSchema.Items = GetJsonSchema(type.GetElementType());
+            }
+
+            return jsonSchema;
+        }
+
+        private static JsonSchemaType GetJsonSchemaType(Type type)
+        {
+            if (type.IsArray)
+            {
+                return JsonSchemaType.Array;
+            }
+
+            if (type == typeof(bool))
+            {
+                return JsonSchemaType.Boolean;
+            }
+
+            if (type == typeof(int))
+            {
+                return JsonSchemaType.Integer;
+            }
+
+            if (type == typeof(double))
+            {
+                return JsonSchemaType.Number;
+            }
+
+            if (type == typeof(string))
+            {
+                return JsonSchemaType.String;
+            }
+
+            return JsonSchemaType.Object;
+
+        }
     }
 }
