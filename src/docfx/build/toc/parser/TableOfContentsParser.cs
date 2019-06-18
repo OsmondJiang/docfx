@@ -13,9 +13,11 @@ namespace Microsoft.Docs.Build
     internal static class TableOfContentsParser
     {
         private static readonly string[] s_tocFileNames = new[] { "TOC.md", "TOC.json", "TOC.yml" };
+        private static readonly string[] s_indexFileNames = new[] { "index.md", "index.yml" };
+
         private static readonly string[] s_experimentalTocFileNames = new[] { "TOC.experimental.md", "TOC.experimental.json", "TOC.experimental.yml" };
 
-        public delegate (string resolvedTopicHref, Document file) ResolveHref(Document relativeTo, SourceInfo<string> href, Document resultRelativeTo);
+        public delegate (string resolvedTopicHref, Document file) ResolveHref(Document relativeTo, SourceInfo<string> href, Document resultRelativeTo, bool silence = false);
 
         public delegate (string resolvedTopicHref, string resolvedTopicName, Document file) ResolveXref(Document relativeTo, SourceInfo<string> uid);
 
@@ -132,11 +134,12 @@ namespace Microsoft.Docs.Build
                     errors.AddRange(ResolveTocModelItems(context, tocModelItem.Items, parents, filePath, rootPath, resolveContent, resolveHref, resolveXref, resolveMoniker));
                 }
 
-                // process
+                // get topic href and toc href
                 var tocHref = GetTocHref(tocModelItem);
                 var topicHref = GetTopicHref(tocModelItem);
                 var topicUid = tocModelItem.Uid;
 
+                // process
                 var (resolvedTocHref, resolvedTopicItemFromTocHref, subChildren) = ProcessTocHref(tocHref);
                 var (resolvedTopicHref, resolvedTopicName, document) = ProcessTopicItem(topicUid, topicHref);
 
@@ -231,6 +234,16 @@ namespace Microsoft.Docs.Build
                 if (string.IsNullOrEmpty(tocInputModel.Href) || !IsIncludeHref(GetHrefType(tocInputModel.Href)))
                 {
                     return tocInputModel.Href;
+                }
+
+                foreach (var index in s_indexFileNames)
+                {
+                    var indexHref = new SourceInfo<string>(Path.Combine(tocInputModel.Href, index), tocInputModel.Href);
+                    var (_, file) = resolveHref(filePath, indexHref, rootPath, true);
+                    if (file != null)
+                    {
+                        return indexHref;
+                    }
                 }
 
                 return default;

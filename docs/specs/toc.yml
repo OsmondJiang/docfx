@@ -1382,3 +1382,36 @@ outputs:
   docs/toc.json: |
     {"items":[{"name":"test","href":"a"}],"!ms.contentlocale":null,"!ms.translationtype":null }
   docs/a.json:
+---
+# reference index file under a folder
+inputs:
+  docfx.yml:
+  docs/TOC.yml: |
+    items:
+      - name: test1
+        href: ~/docs1/
+      - name: test2
+        href: ~/docs2/
+  docs1/index.md:
+  docs2/index.yml: |
+    #YamlMime:TestPage
+outputs:
+  docs/toc.json: |
+    {"items":[{"name":"test1","href":"../docs1/"},{"name":"test2","href":"../docs2/"}] }
+  docs1/index.json:
+  docs2/index.json:
+  .dependencymap.json: |
+    {
+        "dependencies": {
+            "docs/TOC.yml": [
+                {
+                    "source": "docs1/index.md",
+                    "type": "link"
+                },
+                {
+                    "source": "docs2/index.yml",
+                    "type": "link"
+                }
+            ]
+        }
+    }

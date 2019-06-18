@@ -83,10 +83,12 @@ namespace Microsoft.Docs.Build
                     }
                     return (referencedTocContent, referencedToc);
                 },
-                (file, href, resultRelativeTo) =>
+                (file, href, resultRelativeTo, silence) =>
                 {
                     var (error, link, buildItem) = context.DependencyResolver.ResolveLink(href, file, resultRelativeTo, null);
-                    errors.AddIfNotNull(error);
+
+                    if (!silence)
+                        errors.AddIfNotNull(error);
 
                     if (buildItem != null)
                     {
