@@ -28,7 +28,7 @@ namespace Microsoft.Docs.Build
             CreateHostProxy(docsetPath, config.BaseUrl, config.DocumentId.SourceBasePath, options, errorLog).Start();
 
             // luanch docs rending site
-            await CreateRenderingServicer();
+            await CreateRenderingServicer(options);
         }
 
         private static IWebHost CreateHostProxy(string docset, string siteBasePath, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog)
@@ -80,16 +80,15 @@ namespace Microsoft.Docs.Build
             }
         }
 
-        private static Task<int> CreateRenderingServicer()
+        private static Task<int> CreateRenderingServicer(CommandLineOptions options)
         {
-            var port = 56789;
             var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/Docs.Rendering/Source/App"));
             var serverArgs = "run --no-launch-profile --no-build --no-restore";
             var psi = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = serverDir, Arguments = serverArgs };
 
             psi.UseShellExecute = false;
             psi.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
-            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:{port}";
+            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:{options.Port}";
             psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions__BaseUri"] = "http://localhost:56344";
             psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceApiAccessKey"] = "c2hvd21ldGhlbW9uZXk=";
 
