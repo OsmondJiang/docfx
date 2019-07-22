@@ -2,31 +2,17 @@
 // Licensed under the MIT license. See LICENSE file in the project root for full license information.
 
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Docs.Build
 {
     internal static class Host
     {
-        private static string _docset;
-        private static string _baseUrl;
-        private static string _baseFolder;
-        private static ErrorLog _errorLog;
-
-        public static void Config(string docset, Config config, ErrorLog errorLog)
-        {
-            _docset = docset;
-            _baseUrl = config.BaseUrl;
-            _baseFolder = config.DocumentId.SourceBasePath;
-            _errorLog = errorLog;
-        }
-
-        public static void Run()
+        public static Task<int> CreateHostWebService(string docset, string baseUrl, int port)
         {
             // create depots based on current config
             var depotsFilePath = "./Database/storage.json";
@@ -38,10 +24,10 @@ namespace Microsoft.Docs.Build
 
             var depot = new
             {
-                LocalPath = Path.GetFullPath(_docset),
+                LocalPath = Path.GetFullPath(docset),
                 DepotId = Guid.NewGuid().ToString(),
                 DepotName = "test",
-                SiteBasePath = _baseUrl,
+                SiteBasePath = baseUrl,
                 SiteId = Guid.NewGuid().ToString(),
                 PartitionNumber = 0,
                 Metadata = new
@@ -55,48 +41,21 @@ namespace Microsoft.Docs.Build
 
             File.WriteAllText(depotsFilePath, JsonConvert.SerializeObject(new { Depots = new[] { depot } }));
 
-            // start dhs emulator
-            DocumentHostingEmulator.Program.Run<HostStartup>();
-        }
+            // create host file
+            var hostFile = "hosting.json";
 
-        private class HostStartup : DocumentHostingEmulator.Startup
-        {
-            public HostStartup(IConfiguration configuration)
-                : base(configuration)
-            {
-            }
+            File.WriteAllText(hostFile, JsonConvert.SerializeObject(new JObject { ["server.urls"] = $"http://localhost:{port}" }));
 
-            public new void Configure(IApplicationBuilder app, IHostingEnvironment env)
-            {
-                if (env.IsDevelopment())
-                {
-                    app.UseBrowserLink();
-                    app.UseDeveloperExceptionPage();
-                }
-                else
-                {
-                    app.UseExceptionHandler("/Home/Error");
-                }
+            // create dhs emulator process
+            var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/OpenPublishing.DocumentHostingEmulator/Source/DocumentHostingEmulator/DocumentHostingEmulator"));
+            var serverArgs = "run --no-launch-profile --no-build --no-restore";
+            var psi = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = serverDir, Arguments = serverArgs };
 
-                app.UseStaticFiles();
-
-                app.Use(next => async http =>
-                {
-                    if (http.Request.Path.StartsWithSegments("/" + _baseUrl, out var remainingPath))
-                    {
-                        var sourceFilePath = _baseFolder + remainingPath.Value;
-                        await Build.Run(_docset, null, _errorLog, new List<string> { sourceFilePath });
-                        await next(http);
-                    }
-                });
-
-                app.UseMvc(routes =>
-                {
-                    routes.MapRoute(
-                        name: "default",
-                        template: "{controller=Home}/{action=Index}/{id?}");
-                });
-            }
+            var tcs = new TaskCompletionSource<int>();
+            var process = Process.Start(psi);
+            process.EnableRaisingEvents = true;
+            process.Exited += (a, b) => tcs.TrySetResult(process.ExitCode);
+            return tcs.Task;
         }
     }
 }

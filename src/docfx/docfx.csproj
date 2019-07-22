@@ -42,7 +42,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../Microsoft.Docs.Template/Microsoft.Docs.Template.csproj" />
-    <ProjectReference Include="..\..\dep\OpenPublishing.DocumentHostingEmulator\Source\DocumentHostingEmulator\DocumentHostingEmulator\DocumentHostingEmulator.csproj" />
     <None Include="data/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
