@@ -77,14 +77,7 @@ namespace Microsoft.Docs.Build
 
                 if (osMatches)
                 {
-                    if (spec.Watch)
-                    {
-                        await RunWatchCore(docsetPath, spec);
-                    }
-                    else
-                    {
-                        await RunCore(docsetPath, spec);
-                    }
+                    await RunCore(docsetPath, spec);
                 }
                 else
                 {
@@ -150,26 +143,6 @@ namespace Microsoft.Docs.Build
             }
 
             VerifyNoChangesOnInputFiles(inputFiles, spec.SkippableInputs, docsetPath);
-        }
-
-        private static async Task RunWatchCore(string docsetPath, E2ESpec spec)
-        {
-            var server = new TestServer(Watch.CreateWebServer(docsetPath, new CommandLineOptions()));
-
-            foreach (var (request, response) in spec.Http)
-            {
-                var responseContext = await server.SendAsync(requestContext => requestContext.Request.Path = "/" + request);
-                var body = new StreamReader(responseContext.Response.Body).ReadToEnd();
-                var actualResponse = new JObject
-                {
-                    ["status"] = responseContext.Response.StatusCode,
-                    ["body"] = body,
-                };
-                TestUtility.VerifyJsonContainEquals(response, actualResponse);
-            }
-
-            // Verify no output in output directory
-            Assert.False(Directory.Exists(Path.Combine(docsetPath, "_site")));
         }
 
         private static TheoryData<string> FindTestSpecs()

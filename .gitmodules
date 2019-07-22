@@ -1,0 +1,8 @@
+[submodule "dep/Docs.Rendering"]
+	path = dep/Docs.Rendering
+	url = https://ceapex.visualstudio.com/Engineering/_git/Docs.Rendering
+	branch = master
+[submodule "dep/OpenPublishing.DocumentHostingEmulator"]
+	path = dep/OpenPublishing.DocumentHostingEmulator
+	url = https://ceapex.visualstudio.com/Engineering/_git/OpenPublishing.DocumentHostingEmulator
+	branch = master

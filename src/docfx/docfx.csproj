@@ -25,6 +25,7 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.9.1" />
     <PackageReference Include="Microsoft.AspNetCore" Version="2.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="2.2.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="2.8.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.FxCopAnalyzers" Version="2.6.3" PrivateAssets="all" />
     <PackageReference Include="Microsoft.DocAsCode.MarkdigEngine.Extensions" Version="2.44.0-b-190624001-gf130fb" />
     <PackageReference Include="Microsoft.Graph" Version="1.15.0" />
@@ -41,6 +42,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Microsoft.Docs.Template/Microsoft.Docs.Template.csproj" />
+    <ProjectReference Include="..\..\dep\OpenPublishing.DocumentHostingEmulator\Source\DocumentHostingEmulator\DocumentHostingEmulator\DocumentHostingEmulator.csproj" />
     <None Include="data/**/*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
