@@ -7,12 +7,13 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Graph;
 
 namespace Microsoft.Docs.Build
 {
     internal static class Build
     {
-        public static async Task Run(string docsetPath, CommandLineOptions options, ErrorLog errorLog)
+        public static async Task Run(string docsetPath, CommandLineOptions options, ErrorLog errorLog, List<string> files = null)
         {
             var repository = Repository.Create(docsetPath);
             Telemetry.SetRepository(repository?.Remote, repository?.Branch);
@@ -22,7 +23,7 @@ namespace Microsoft.Docs.Build
 
             try
             {
-                await Run(docsetPath, repository, locale, options, errorLog, restoreMap, fallbackRepo);
+                await Run(docsetPath, repository, locale, options, errorLog, restoreMap, fallbackRepo, files);
             }
             finally
             {
@@ -37,7 +38,8 @@ namespace Microsoft.Docs.Build
             CommandLineOptions options,
             ErrorLog errorLog,
             RestoreMap restoreMap,
-            Repository fallbackRepo = null)
+            Repository fallbackRepo = null,
+            List<string> files = null)
         {
             var (configErrors, config) = GetBuildConfig(docsetPath, options, locale, fallbackRepo);
             errorLog.Configure(config);
@@ -51,7 +53,8 @@ namespace Microsoft.Docs.Build
 
             using (var context = new Context(outputPath, errorLog, docset, BuildFile))
             {
-                context.BuildQueue.Enqueue(context.BuildScope.Files);
+                var filesToBuild = files?.Select(f => Document.CreateFromFile(docset, f, context.TemplateEngine)) ?? context.BuildScope.Files;
+                context.BuildQueue.Enqueue(filesToBuild);
 
                 using (Progress.Start("Building files"))
                 {
