@@ -50,7 +50,7 @@ namespace Microsoft.Docs.Build
             var docset = GetBuildDocset(new Docset(errorLog, docsetPath, locale, config, options, restoreMap, repository, fallbackRepo));
             var outputPath = Path.Combine(docsetPath, config.Output.Path);
 
-            using (var context = new Context(outputPath, errorLog, docset, BuildFile))
+            using (var context = new Context(outputPath, errorLog, docset, BuildFile, files != null))
             {
                 var filesToBuild = files != null ? context.BuildScope.Files.Where(f => files.Contains(f.SiteUrl, StringComparer.OrdinalIgnoreCase)) : context.BuildScope.Files;
                 context.BuildQueue.Enqueue(filesToBuild);

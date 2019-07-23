@@ -14,6 +14,7 @@ namespace Microsoft.Docs.Build
 {
     internal class DependencyResolver
     {
+        private readonly bool _watch;
         private readonly BuildScope _buildScope;
         private readonly WorkQueue<Document> _buildQueue;
         private readonly BookmarkValidator _bookmarkValidator;
@@ -31,8 +32,10 @@ namespace Microsoft.Docs.Build
             BookmarkValidator bookmarkValidator,
             DependencyMapBuilder dependencyMapBuilder,
             Lazy<XrefMap> xrefMap,
-            TemplateEngine templateEngine)
+            TemplateEngine templateEngine,
+            bool watch)
         {
+            _watch = watch;
             _buildScope = buildScope;
             _buildQueue = buildQueue;
             _bookmarkValidator = bookmarkValidator;
@@ -68,7 +71,7 @@ namespace Microsoft.Docs.Build
         {
             var (error, link, fragment, linkType, file, isCrossReference) = TryResolveAbsoluteLink(declaringFile, path);
 
-            if (file != null)
+            if (file != null && !_watch)
             {
                 _buildQueue.Enqueue(file);
             }

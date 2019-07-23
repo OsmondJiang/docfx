@@ -5,10 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Http;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -27,7 +24,7 @@ namespace Microsoft.Docs.Build
             var (_, siteBasePath) = SplitBaseUrl(config.BaseUrl);
 
             // start hosting via dhs emulator
-            Host.CreateHostWebService(docsetPath, siteBasePath, 5000, config);
+            Host.CreateHostWebService(docsetPath, siteBasePath, 5000, config, options);
 
             // creat host proxy
             CreateHostProxy(docsetPath, siteBasePath, options, errorLog).Start();
@@ -68,7 +65,7 @@ namespace Microsoft.Docs.Build
                     var request = new HttpRequestMessage
                     {
                         Method = HttpMethod.Get,
-                        RequestUri = new Uri(http.Request.Path, UriKind.Relative),
+                        RequestUri = new Uri(http.Request.Path + http.Request.QueryString.Value, UriKind.Relative),
                     };
 
                     using (var response = await httpClient.SendAsync(request))

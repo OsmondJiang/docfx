@@ -11,7 +11,7 @@ namespace Microsoft.Docs.Build
 {
     internal static class Host
     {
-        public static void CreateHostWebService(string docset, string siteBasePath, int port, Config config)
+        public static void CreateHostWebService(string docset, string siteBasePath, int port, Config config, CommandLineOptions options)
         {
             // create depots based on current config
             var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/OpenPublishing.DocumentHostingEmulator/Source/DocumentHostingEmulator/DocumentHostingEmulator"));
@@ -27,7 +27,7 @@ namespace Microsoft.Docs.Build
                 LocalPath = Path.GetFullPath(Path.Combine(docset, $"_site/{siteBasePath}")),
                 DepotId = Guid.NewGuid().ToString(),
                 DepotName = "test",
-                SiteBasePath = "docs.microsoft.com/" + siteBasePath,
+                SiteBasePath = "docs.microsoft.com/" + siteBasePath + "/",
                 SiteId = Guid.NewGuid().ToString(),
                 PartitionNumber = 0,
                 Metadata = new
@@ -39,13 +39,10 @@ namespace Microsoft.Docs.Build
                 Priority = 0,
             };
 
-            var dependencyLock = DependencyLock.Load(docset, string.IsNullOrEmpty(config.DependencyLock) ? new SourceInfo<string>(AppData.GetDependencyLockFile(docset, default)) : config.DependencyLock) ?? new DependencyLockModel();
-            var restoreMap = RestoreMap.Create(dependencyLock);
-            var (template, branch, _) = UrlUtility.SplitGitUrl(config.Template);
             var theme = new
             {
                 ThemeName = "Docs.Theme",
-                LocalPath = restoreMap.GetGitRestorePath(template, branch, docset).path,
+                LocalPath = options.Template,
             };
 
             PathUtility.CreateDirectoryFromFilePath(depotsFilePath);
