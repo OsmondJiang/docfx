@@ -87,7 +87,7 @@ namespace Microsoft.Docs.Build
                             Done(command, stopwatch.Elapsed, errorLog);
                             break;
                         case "watch":
-                            await Watch.Run(docset, options, errorLog);
+                            await Watch.Run(docset, options.Template, errorLog);
                             break;
                     }
                     return 0;

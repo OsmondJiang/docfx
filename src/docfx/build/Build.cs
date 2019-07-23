@@ -52,7 +52,7 @@ namespace Microsoft.Docs.Build
 
             using (var context = new Context(outputPath, errorLog, docset, BuildFile, files != null))
             {
-                var filesToBuild = files != null ? context.BuildScope.Files.Where(f => files.Contains(f.SiteUrl, StringComparer.OrdinalIgnoreCase)) : context.BuildScope.Files;
+                var filesToBuild = files != null ? files.Select(f => Document.CreateFromFile(docset, f, context.TemplateEngine)).ToList() : context.BuildScope.Files.ToList();
                 context.BuildQueue.Enqueue(filesToBuild);
 
                 using (Progress.Start("Building files"))

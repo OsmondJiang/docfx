@@ -23,7 +23,7 @@ namespace Microsoft.Docs.Build
             if (Legacy)
             {
                 output["json"] = true;
-                output["copyResources"] = false;
+                output["copyResources"] = true;
             }
 
             var result = new JObject();
