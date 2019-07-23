@@ -4,7 +4,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -12,10 +11,11 @@ namespace Microsoft.Docs.Build
 {
     internal static class Host
     {
-        public static Task<int> CreateHostWebService(string docset, string baseUrl, int port)
+        public static void CreateHostWebService(string docset, string siteBasePath, int port, Config config)
         {
             // create depots based on current config
-            var depotsFilePath = "./Database/storage.json";
+            var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/OpenPublishing.DocumentHostingEmulator/Source/DocumentHostingEmulator/DocumentHostingEmulator"));
+            var depotsFilePath = Path.Combine(serverDir, "Database/storage.json");
 
             if (File.Exists(depotsFilePath))
             {
@@ -24,10 +24,10 @@ namespace Microsoft.Docs.Build
 
             var depot = new
             {
-                LocalPath = Path.GetFullPath(docset),
+                LocalPath = Path.GetFullPath(Path.Combine(docset, $"_site/{siteBasePath}")),
                 DepotId = Guid.NewGuid().ToString(),
                 DepotName = "test",
-                SiteBasePath = baseUrl,
+                SiteBasePath = "docs.microsoft.com/" + siteBasePath,
                 SiteId = Guid.NewGuid().ToString(),
                 PartitionNumber = 0,
                 Metadata = new
@@ -39,23 +39,29 @@ namespace Microsoft.Docs.Build
                 Priority = 0,
             };
 
-            File.WriteAllText(depotsFilePath, JsonConvert.SerializeObject(new { Depots = new[] { depot } }));
+            var dependencyLock = DependencyLock.Load(docset, string.IsNullOrEmpty(config.DependencyLock) ? new SourceInfo<string>(AppData.GetDependencyLockFile(docset, default)) : config.DependencyLock) ?? new DependencyLockModel();
+            var restoreMap = RestoreMap.Create(dependencyLock);
+            var (template, branch, _) = UrlUtility.SplitGitUrl(config.Template);
+            var theme = new
+            {
+                ThemeName = "Docs.Theme",
+                LocalPath = restoreMap.GetGitRestorePath(template, branch, docset).path,
+            };
+
+            PathUtility.CreateDirectoryFromFilePath(depotsFilePath);
+            File.WriteAllText(depotsFilePath, JsonConvert.SerializeObject(new { Depots = new[] { depot }, Themes = new[] { theme } }));
 
             // create host file
-            var hostFile = "hosting.json";
+            var hostFile = Path.Combine(serverDir, "hosting.json");
 
+            PathUtility.CreateDirectoryFromFilePath(hostFile);
             File.WriteAllText(hostFile, JsonConvert.SerializeObject(new JObject { ["server.urls"] = $"http://localhost:{port}" }));
 
             // create dhs emulator process
-            var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/OpenPublishing.DocumentHostingEmulator/Source/DocumentHostingEmulator/DocumentHostingEmulator"));
-            var serverArgs = "run --no-launch-profile --no-build --no-restore";
-            var psi = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = serverDir, Arguments = serverArgs };
-
-            var tcs = new TaskCompletionSource<int>();
-            var process = Process.Start(psi);
-            process.EnableRaisingEvents = true;
-            process.Exited += (a, b) => tcs.TrySetResult(process.ExitCode);
-            return tcs.Task;
+            var serverArgs = $"run -p {serverDir} --no-launch-profile --no-build --no-restore";
+            var psi = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = docset, Arguments = serverArgs };
+            psi.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
+            Process.Start(psi);
         }
     }
 }

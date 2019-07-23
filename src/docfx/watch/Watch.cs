@@ -8,6 +8,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -19,28 +20,33 @@ namespace Microsoft.Docs.Build
     {
         public static async Task Run(string docsetPath, CommandLineOptions options, ErrorLog errorLog)
         {
+            // restore before watch
+            await Restore.Run(docsetPath, options, errorLog);
+
             var (_, config) = ConfigLoader.Load(docsetPath, options);
+            var (_, siteBasePath) = SplitBaseUrl(config.BaseUrl);
 
             // start hosting via dhs emulator
-            Host.CreateHostWebService(docsetPath, config.BaseUrl, 5000).Start();
+            Host.CreateHostWebService(docsetPath, siteBasePath, 5000, config);
 
             // creat host proxy
-            CreateHostProxy(docsetPath, config.BaseUrl, config.DocumentId.SourceBasePath, options, errorLog).Start();
+            CreateHostProxy(docsetPath, siteBasePath, options, errorLog).Start();
 
             // luanch docs rending site
             await CreateRenderingServicer(options);
         }
 
-        private static IWebHost CreateHostProxy(string docset, string siteBasePath, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog)
+        private static IWebHost CreateHostProxy(string docset, string siteBasePath, CommandLineOptions options, ErrorLog errorLog)
         {
             var httpClient = new HttpClient()
             {
                 // dhs emulator
-                BaseAddress = new Uri("http://localehost:5000"),
+                BaseAddress = new Uri("http://localhost:5000"),
             };
 
             return new WebHostBuilder()
                 .UseUrls($"http://*:{options.Port}")
+                .UseKestrel()
                 .Configure(Configure)
                 .Build();
 
@@ -48,34 +54,39 @@ namespace Microsoft.Docs.Build
             {
                 app.Use(next => async http =>
                 {
-                    if (http.Request.Path.StartsWithSegments("/" + siteBasePath, out var remainingPath))
+                    if (http.Request.Path.StartsWithSegments($"/depots/test/documents", out var remainingPath))
                     {
-                        var filePath = Path.Combine(sourceBasePath, remainingPath.Value);
-
-                        try
+                        // build file before go to dhs emulator
+                        var sitePath = "/" + siteBasePath + remainingPath.Value;
+                        var fileName = Path.GetFileName(sitePath);
+                        if (string.Equals(fileName, "index", PathUtility.PathComparison))
                         {
-                            // build file before go to dhs emulator
-                            await Build.Run(docset, options, errorLog, new List<string> { filePath });
-                            var request = new HttpRequestMessage
-                            {
-                                Method = HttpMethod.Get,
-                                RequestUri = new Uri(http.Request.Path, UriKind.Relative),
-                            };
-
-                            using (var response = await httpClient.SendAsync(request))
-                            {
-                                http.Response.StatusCode = (int)response.StatusCode;
-                                await response.Content.CopyToAsync(http.Response.Body);
-                            }
-
-                            await next(http);
+                            sitePath = sitePath.Substring(0, sitePath.Length - 5);
                         }
-                        catch
+                        await Build.Run(docset, options, errorLog, new List<string> { sitePath });
+                    }
+                    var request = new HttpRequestMessage
+                    {
+                        Method = HttpMethod.Get,
+                        RequestUri = new Uri(http.Request.Path, UriKind.Relative),
+                    };
+
+                    using (var response = await httpClient.SendAsync(request))
+                    {
+                        http.Response.StatusCode = (int)response.StatusCode;
+
+                        if (response.IsSuccessStatusCode)
                         {
-                            http.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                            await http.Response.WriteAsync("build failed, check the build log");
+                            await response.Content.CopyToAsync(http.Response.Body);
+                        }
+                        else
+                        {
+                            var ex = await response.Content.ReadAsStringAsync();
+                            await http.Response.WriteAsync(ex);
                         }
                     }
+
+                    return;
                 });
             }
         }
@@ -88,15 +99,31 @@ namespace Microsoft.Docs.Build
 
             psi.UseShellExecute = false;
             psi.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
-            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:{options.Port}";
-            psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions__BaseUri"] = "http://localhost:56344";
-            psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceApiAccessKey"] = "c2hvd21ldGhlbW9uZXk=";
+            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:5001";
+            psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions__BaseUri"] = $"http://localhost:{options.Port}";
+            psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions:ApiAccessKey"] = "fV0/VWFb7W9xKkJek6fEVSHYUviVRDQQ4aSDmkmeRl0tCDDJUTiM7p1EcIh+SYnD8/9Y7hXNB3eOvUwVzR+5Aw==";
 
             var tcs = new TaskCompletionSource<int>();
             var process = Process.Start(psi);
             process.EnableRaisingEvents = true;
             process.Exited += (a, b) => tcs.TrySetResult(process.ExitCode);
             return tcs.Task;
+        }
+
+        private static (string hostName, string siteBasePath) SplitBaseUrl(string baseUrl)
+        {
+            string hostName = string.Empty;
+            string siteBasePath = ".";
+            if (!string.IsNullOrEmpty(baseUrl)
+                && Uri.TryCreate(baseUrl, UriKind.Absolute, out var uriResult))
+            {
+                if (uriResult.AbsolutePath != "/")
+                {
+                    siteBasePath = uriResult.AbsolutePath.Substring(1);
+                }
+                hostName = $"{uriResult.Scheme}://{uriResult.Host}";
+            }
+            return (hostName, siteBasePath);
         }
     }
 }
