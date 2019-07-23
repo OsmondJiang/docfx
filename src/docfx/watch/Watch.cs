@@ -24,7 +24,7 @@ namespace Microsoft.Docs.Build
         public static async Task Run(string docsetPath, string template, ErrorLog errorLog)
         {
             // restore before watch
-            var buildOptions = new CommandLineOptions { Legacy = true, Verbose = true, };
+            var buildOptions = new CommandLineOptions { Legacy = true, Verbose = true, CopyResource = true };
             await Restore.Run(docsetPath, buildOptions, errorLog);
 
             var (_, config) = ConfigLoader.Load(docsetPath, buildOptions);
