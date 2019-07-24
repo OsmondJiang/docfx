@@ -17,11 +17,10 @@ namespace Microsoft.Docs.Build
 {
     internal class Watch
     {
-        private static int _dhsPort = 5000;
-        private static int _renderingPort = 5001;
+        private static int _dhsPort = 56344;
         private static int _watchPort = 5002;
 
-        public static async Task Run(string docsetPath, string template, ErrorLog errorLog)
+        public static async Task Run(string docsetPath, string template, int port, ErrorLog errorLog)
         {
             // restore before watch
             var buildOptions = new CommandLineOptions { Legacy = true, Verbose = true, CopyResource = true };
@@ -37,7 +36,8 @@ namespace Microsoft.Docs.Build
             CreateBuildFilesProxy(docsetPath, config.DocumentId.SourceBasePath, buildOptions, errorLog);
 
             // luanch docs rending site
-            await CreateRenderingService();
+            await CreateRenderingService(port
+                );
         }
 
         private static void CreateBuildFilesProxy(string docset, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog)
@@ -107,26 +107,34 @@ namespace Microsoft.Docs.Build
 
                 foreach (var ext in new[] { ".md", ".yml", ".json" })
                 {
-                    if (File.Exists(fullPath + ext))
+                    fullPath = ChangeExtension(fullPath, ext);
+                    if (File.Exists(fullPath))
                     {
-                        filePath = Path.GetRelativePath(docset, fullPath + ext);
+                        filePath = Path.GetRelativePath(docset, fullPath);
                         return true;
                     }
                 }
 
                 return false;
             }
+
+            string ChangeExtension(string filePath, string ext)
+            {
+                var fileName = Path.Combine(Path.GetDirectoryName(filePath), Path.GetFileNameWithoutExtension(filePath));
+
+                return fileName + ext;
+            }
         }
 
-        private static Task<int> CreateRenderingService()
+        private static Task<int> CreateRenderingService(int port)
         {
             var serverDir = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../dep/Docs.Rendering/Source/App"));
             var serverArgs = "run --no-launch-profile --no-build --no-restore";
             var psi = new ProcessStartInfo { FileName = "dotnet", WorkingDirectory = serverDir, Arguments = serverArgs };
 
             psi.UseShellExecute = false;
-            psi.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "Development";
-            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:{_renderingPort}";
+            psi.EnvironmentVariables["ASPNETCORE_ENVIRONMENT"] = "local-preview";
+            psi.EnvironmentVariables["ASPNETCORE_URLS"] = $"http://*:{port}";
             psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions__BaseUri"] = $"http://localhost:{_watchPort}";
             psi.EnvironmentVariables["APPSETTING_DocumentHostingServiceClientOptions:ApiAccessKey"] = "fV0/VWFb7W9xKkJek6fEVSHYUviVRDQQ4aSDmkmeRl0tCDDJUTiM7p1EcIh+SYnD8/9Y7hXNB3eOvUwVzR+5Aw==";
 
