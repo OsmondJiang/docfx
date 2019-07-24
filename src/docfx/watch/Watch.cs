@@ -36,8 +36,7 @@ namespace Microsoft.Docs.Build
             CreateBuildFilesProxy(docsetPath, config.DocumentId.SourceBasePath, buildOptions, errorLog);
 
             // luanch docs rending site
-            await CreateRenderingService(port
-                );
+            await CreateRenderingService(port);
         }
 
         private static void CreateBuildFilesProxy(string docset, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog)
