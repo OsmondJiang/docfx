@@ -13,6 +13,7 @@ namespace Microsoft.Docs.Build
         public string Locale;
         public string Template;
         public int Port;
+        public bool CopyResource;
 
         public JObject ToJObject()
         {
@@ -23,7 +24,7 @@ namespace Microsoft.Docs.Build
             if (Legacy)
             {
                 output["json"] = true;
-                output["copyResources"] = false;
+                output["copyResources"] = CopyResource || false;
             }
 
             var result = new JObject();

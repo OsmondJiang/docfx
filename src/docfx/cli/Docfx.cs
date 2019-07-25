@@ -87,7 +87,7 @@ namespace Microsoft.Docs.Build
                             Done(command, stopwatch.Elapsed, errorLog);
                             break;
                         case "watch":
-                            await Watch.Run(docset, options, errorLog);
+                            await Watch.Run(docset, options.Template, options.Port, errorLog);
                             break;
                     }
                     return 0;
@@ -141,6 +141,7 @@ namespace Microsoft.Docs.Build
                     // Watch command
                     syntax.DefineCommand("watch", ref command, "Previews a docset and watch changes interactively.");
                     syntax.DefineOption("locale", ref options.Locale, "The locale of the docset to build.");
+                    syntax.DefineOption("legacy", ref options.Legacy, "Enable legacy output for backward compatibility.");
                     syntax.DefineOption("template", ref options.Template, "The directory or git repository that contains website template.");
                     syntax.DefineOption("port", ref options.Port, "The port of the launched website.");
                     syntax.DefineOption("v|verbose", ref options.Verbose, "Enable diagnostics console output.");
