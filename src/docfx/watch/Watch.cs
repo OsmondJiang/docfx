@@ -33,13 +33,14 @@ namespace Microsoft.Docs.Build
             CreateHostWebService(docsetPath, siteBasePath, config, template);
 
             // creat building file proxy
-            CreateBuildFilesProxy(docsetPath, config.DocumentId.SourceBasePath, buildOptions, errorLog);
+            CreateBuildFilesProxy(docsetPath, config.DocumentId.SourceBasePath, buildOptions, errorLog, config);
 
             // luanch docs rending site
             await CreateRenderingService(port);
         }
 
-        private static void CreateBuildFilesProxy(string docset, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog)
+        private static void CreateBuildFilesProxy(string docset, string sourceBasePath, CommandLineOptions options, ErrorLog errorLog, Config
+             config)
         {
             var httpClient = new HttpClient()
             {
@@ -96,21 +97,35 @@ namespace Microsoft.Docs.Build
             {
                 assetId = System.Net.WebUtility.UrlDecode(assetId.Substring(1));
                 filePath = null;
-                var fullPath = Path.Combine(docset, sourceBasePath, assetId);
 
-                if (File.Exists(fullPath))
+                foreach (var (source, site) in config.Routes)
                 {
-                    filePath = Path.GetRelativePath(docset, fullPath);
-                    return true;
-                }
+                    var sourcePath = assetId;
 
-                foreach (var ext in new[] { ".md", ".yml", ".json" })
-                {
-                    fullPath = ChangeExtension(fullPath, ext);
+                    if (assetId.StartsWith(site))
+                    {
+                        sourcePath = source + assetId.Substring(site.Length);
+                    }
+                    else if (site == ".")
+                    {
+                        sourcePath = source + assetId;
+                    }
+
+                    var fullPath = Path.Combine(docset, sourcePath);
                     if (File.Exists(fullPath))
                     {
                         filePath = Path.GetRelativePath(docset, fullPath);
                         return true;
+                    }
+
+                    foreach (var ext in new[] { ".md", ".yml", ".json" })
+                    {
+                        fullPath = ChangeExtension(fullPath, ext);
+                        if (File.Exists(fullPath))
+                        {
+                            filePath = Path.GetRelativePath(docset, fullPath);
+                            return true;
+                        }
                     }
                 }
 
