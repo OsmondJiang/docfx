@@ -152,16 +152,10 @@ namespace Microsoft.Docs.Build
                         var newObject = new JObject();
                         foreach (var (key, value) in obj)
                         {
-                            if (schema.Properties.TryGetValue(key, out var propertySchema))
-                            {
-                                var (propertyErrors, transformedValue) = TransformToken(file, context, propertySchema, value);
-                                errors.AddRange(propertyErrors);
-                                newObject[key] = transformedValue;
-                            }
-                            else
-                            {
-                                newObject[key] = value;
-                            }
+                            var propertySchema = schema.Properties.TryGetValue(key, out var subSchema) ? subSchema : null;
+                            var (propertyErrors, transformedValue) = TransformToken(file, context, propertySchema, value);
+                            errors.AddRange(propertyErrors);
+                            newObject[key] = transformedValue;
                         }
                         return (errors, newObject);
 
