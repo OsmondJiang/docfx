@@ -493,7 +493,7 @@ inputs:
 outputs:
   a.json:
   b.json:
-  .error.log: |
+  .errors.log: |
     ["suggestion","duplicate-attribute","Attribute 'description' with value 'abc' is duplicated in 'docfx.yml(4,16)', 'docfx.yml(4,16)'","docfx.yml",4,16]
 ---
 # Json schema length rule: the length of string must be in range of MinLength and MaxLength
